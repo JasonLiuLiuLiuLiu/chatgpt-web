@@ -37,10 +37,10 @@ jobs:
     - name: pack
       working-directory: ./service
       run: |
-        mkdir -p ${{env.working-directory}}/app
-        cp ${{env.working-directory}}/service/package.json ${{env.working-directory}}/app
-        cp ${{env.working-directory}}/service/pnpm-lock.yaml ${{env.working-directory}}/app
+        sudo mkdir -p ${{env.working-directory}}/app
+        sudo cp ${{env.working-directory}}/service/package.json ${{env.working-directory}}/app
+        sudo cp ${{env.working-directory}}/service/pnpm-lock.yaml ${{env.working-directory}}/app
         pnpm install --production && rm -rf /root/.npm /root/.pnpm-store /usr/local/share/.cache /tmp/*
-        cd ${{env.working-directory}}/app
-        cp ${{env.working-directory}}/service ${{env.working-directory}}/app
-        cp ${{env.working-directory}}/dist ${{env.working-directory}}/app/public
+        sudo cd ${{env.working-directory}}/app
+        sudo cp ${{env.working-directory}}/service ${{env.working-directory}}/app
+        sudo cp ${{env.working-directory}}/dist ${{env.working-directory}}/app/public
