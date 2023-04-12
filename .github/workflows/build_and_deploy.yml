@@ -25,7 +25,7 @@ jobs:
     - name: build web
       working-directory: ./
       run: |
-        pnpm install
+        pnpm install --no-frozen-lockfile
         pnpm run build
 
     - name: build server
