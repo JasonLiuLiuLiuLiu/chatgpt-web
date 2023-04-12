@@ -25,13 +25,13 @@ jobs:
     - name: build web
       working-directory: ./
       run: |
-        pnpm install --no-frozen-lockfile
+        pnpm install
         pnpm run build
 
     - name: build server
       working-directory: ./service
       run: |
-        pnpm install
+        pnpm install --no-frozen-lockfile
         pnpm run build
         
     - name: pack
