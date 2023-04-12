@@ -23,13 +23,13 @@ jobs:
         npm install pnpm -g
 
     - name: build web
-      working-directory: ${{env.working-directory}}
+      working-directory: ./
       run: |
         pnpm install
         pnpm run build
 
     - name: build server
-      working-directory: ${{env.working-directory}}/server
+      working-directory: ./service
       run: |
         pnpm install
         pnpm run build
