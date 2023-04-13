@@ -21,6 +21,10 @@ jobs:
     - name: install pnpm
       run: |
         npm install pnpm -g
+        
+    - name: install rsync
+      run: |
+        apt-get install rsync       
 
     - name: build front-end
       working-directory: ./
@@ -28,7 +32,7 @@ jobs:
         mkdir font-end
         cp package.json ./font-end
         cp pnpm-lock.yaml ./font-end
-        cp -r --exclude=font-end * font-end/
+        rsync -av --exclude 'font-end' * font-end/
         cd font-end
         pnpm install
         pnpm run build
