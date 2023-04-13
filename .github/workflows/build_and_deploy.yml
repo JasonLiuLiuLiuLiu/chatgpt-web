@@ -37,9 +37,5 @@ jobs:
     - name: pack
       working-directory: ./service
       run: |
-        mkdir -p ../app
-        cp package.json ../app
-        cp pnpm-lock.yaml ../app
-        pnpm install --production && rm -rf /root/.npm /root/.pnpm-store /usr/local/share/.cache /tmp/*
-        cp ../service ../app
-        cp ../dist ../app/public
+        pnpm install --production
+        cp ../dist ../service/public
