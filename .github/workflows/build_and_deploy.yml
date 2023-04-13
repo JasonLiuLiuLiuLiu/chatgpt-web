@@ -57,7 +57,7 @@ jobs:
         cd ..
         cp -r service/* pack/
         cp -r font-end/dist/ pack/public
-        cp -r font-end/build/ pack/build
+        cp -r backend/build/ pack/build
   
     - name: Archive production artifacts
       uses: actions/upload-artifact@v3
