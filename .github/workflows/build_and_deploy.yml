@@ -38,4 +38,4 @@ jobs:
       working-directory: ./service
       run: |
         pnpm install --production
-        cp ${{ github.GITHUB_WORKSPACE }}/dist ${{ github.GITHUB_WORKSPACE }}/service/public
+        cp ${{ github.workspace }}/dist ${{ github.workspace }}/service/public
