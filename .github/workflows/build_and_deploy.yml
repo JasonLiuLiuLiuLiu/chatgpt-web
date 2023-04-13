@@ -28,7 +28,7 @@ jobs:
         mkdir font-end
         cp package.json ./font-end
         cp pnpm-lock.yaml ./font-end
-        cp -r * font-end/
+        cp -r --exclude=font-end * font-end/
         cd font-end
         pnpm install
         pnpm run build
