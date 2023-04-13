@@ -53,7 +53,7 @@ jobs:
         cp service/package.json pack/
         cp service/pnpm-lock.yaml pack/
         cd pack
-        pnpm install --production
+        pnpm install --production --no-frozen-lockfile
         cd ..
         cp -r ../service/. .
         cp -r font-end/dist/ pack/public
