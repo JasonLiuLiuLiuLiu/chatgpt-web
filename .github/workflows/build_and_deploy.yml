@@ -37,10 +37,9 @@ jobs:
     - name: pack
       working-directory: ./service
       run: |
-        mkdir -p ${{env.GITHUB_WORKSPACE}}/app
-        sudo cp ${{env.GITHUB_WORKSPACE}}/service/package.json ${{env.GITHUB_WORKSPACE}}/app
-        sudo cp ${{env.GITHUB_WORKSPACE}}/service/pnpm-lock.yaml ${{env.GITHUB_WORKSPACE}}/app
+        mkdir -p ../app
+        cp package.json ../app
+        cp pnpm-lock.yaml ../app
         pnpm install --production && rm -rf /root/.npm /root/.pnpm-store /usr/local/share/.cache /tmp/*
-        sudo cd ${{env.GITHUB_WORKSPACE}}/app
-        sudo cp ${{env.GITHUB_WORKSPACE}}/service ${{env.GITHUB_WORKSPACE}}/app
-        sudo cp ${{env.GITHUB_WORKSPACE}}/dist ${{env.GITHUB_WORKSPACE}}/app/public
+        cp ../service ../app
+        cp ../dist ../app/public
