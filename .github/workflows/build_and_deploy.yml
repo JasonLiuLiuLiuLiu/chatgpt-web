@@ -65,3 +65,13 @@ jobs:
         name: service-artifact
         path: |
           pack
+          
+    - name: Copy file to server via ssh password
+      uses: appleboy/scp-action@v0.1.4
+      with:
+         host: ${{ secrets.HOST }}
+         username: ${{ secrets.USERNAME }}
+         password: ${{ secrets.PASSWORD }}
+         port: ${{ secrets.PORT }}
+         source: pack/*
+         target: www/html/chatgpt
