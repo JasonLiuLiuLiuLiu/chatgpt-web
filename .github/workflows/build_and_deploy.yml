@@ -55,7 +55,7 @@ jobs:
         cd pack
         pnpm install --production --no-frozen-lockfile
         cd ..
-        cp -r ../service/. .
+        cp -r service/* pack/
         cp -r font-end/dist/ pack/public
         cp -r font-end/build/ pack/build
   
