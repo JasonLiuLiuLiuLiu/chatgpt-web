@@ -49,15 +49,15 @@ jobs:
     - name: pack build result
       working-directory: ./
       run: |
-        mkdir pack
-        cp service/package.json pack/
-        cp service/pnpm-lock.yaml pack/
-        cd pack
+        mkdir web
+        cp service/package.json web/
+        cp service/pnpm-lock.yaml web/
+        cd web
         pnpm install --production --no-frozen-lockfile
         cd ..
-        cp -r service/* pack/
-        cp -r font-end/dist/ pack/public
-        cp -r backend/build/ pack/build
+        cp -r service/* web/
+        cp -r font-end/dist/ web/public
+        cp -r backend/build/ web/build
   
 #    - name: Archive production artifacts
 #      uses: actions/upload-artifact@v3
@@ -66,12 +66,13 @@ jobs:
 #        path: |
 #          pack
           
-    - name: Copy file to server via ssh password
+    - name: copy file to server
       uses: appleboy/scp-action@v0.1.4
       with:
          host: ${{ secrets.HOST }}
          username: ${{ secrets.USERNAME }}
          password: ${{ secrets.PASSWORD }}
          port: ${{ secrets.PORT }}
-         source: pack/*
-         target: www/html/chatgpt
+         overwrite: "true"
+         source: web/*
+         target: /www/html/chatgpt
