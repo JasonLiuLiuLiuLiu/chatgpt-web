@@ -22,27 +22,42 @@ jobs:
       run: |
         npm install pnpm -g
 
-    - name: build web
+    - name: build front-end
       working-directory: ./
       run: |
+        mkdir font-end
+        cp package.json ./font-end
+        cp pnpm-lock.yaml ./font-end
+        cp -r * font-end/
+        cd font-end
         pnpm install
         pnpm run build
 
-    - name: build server
-      working-directory: ./service
+    - name: build backend
+      working-directory: ./
       run: |
+        mkdir backend
+        cp -r service/* backend/
+        cd backend
         pnpm install --no-frozen-lockfile
         pnpm run build
         
-    - name: pack
-      working-directory: ./service
+    - name: pack build result
+      working-directory: ./
       run: |
+        mkdir pack
+        cp service/package.json pack/
+        cp service/pnpm-lock.yaml pack/
+        cd pack
         pnpm install --production
-        cp -r ${{ github.workspace }}/dist/ ${{ github.workspace }}/service/public
+        cd ..
+        cp -r ../service/. .
+        cp -r font-end/dist/ pack/public
+        cp -r font-end/build/ pack/build
   
     - name: Archive production artifacts
       uses: actions/upload-artifact@v3
       with:
         name: service-artifact
         path: |
-          service
+          pack
