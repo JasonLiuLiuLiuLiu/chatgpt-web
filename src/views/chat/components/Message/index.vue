@@ -36,6 +36,16 @@ const asRawText = ref(props.inversion)
 
 const messageRef = ref<HTMLElement>()
 
+const synth = window.speechSynthesis
+const msg = new SpeechSynthesisUtterance()
+const ttsPlaying = ref<boolean>(false)
+msg.addEventListener('end', () => {
+  ttsPlaying.value = false
+})
+msg.addEventListener('start', () => {
+  ttsPlaying.value = true
+})
+
 const options = computed(() => {
   const common = [
     {
@@ -74,9 +84,22 @@ function handleSelect(key: 'copyText' | 'delete' | 'toggleRenderType') {
   }
 }
 
-function ttsPlay() {
-  const utterance = new SpeechSynthesisUtterance(props.text)
-  window.speechSynthesis.speak(utterance)
+function ttsPlayStart() {
+  if (ttsPlaying.value)
+    return
+
+  if (!props.text)
+    return
+  msg.text = props.text
+  synth.speak(msg)
+}
+
+function ttsPlayStop() {
+  if (!ttsPlaying.value)
+    return
+
+  synth.cancel()
+  ttsPlaying.value = false
 }
 
 function handleRegenerate() {
@@ -115,11 +138,18 @@ function handleRegenerate() {
         />
         <div class="flex flex-col">
           <button
-            v-if="!inversion"
+            v-if="!inversion && !ttsPlaying"
             class="mb-2 transition text-neutral-300 hover:text-neutral-800 dark:hover:text-neutral-300"
-            @click="ttsPlay"
+            @click="ttsPlayStart"
           >
-            <SvgIcon icon="ri:volume-down-fill" />
+            <SvgIcon icon="ri:volume-up-fill" />
+          </button>
+          <button
+            v-if="!inversion && ttsPlaying"
+            class="mb-2 transition text-neutral-300 hover:text-neutral-800 dark:hover:text-neutral-300"
+            @click="ttsPlayStop"
+          >
+            <SvgIcon icon="ri:stop-mini-fill" />
           </button>
           <button
             v-if="!inversion"
