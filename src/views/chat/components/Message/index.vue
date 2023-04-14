@@ -74,6 +74,11 @@ function handleSelect(key: 'copyText' | 'delete' | 'toggleRenderType') {
   }
 }
 
+function ttsPlay(){
+	var utterance = new SpeechSynthesisUtterance(asRawText);
+	speechSynthesis.speak(utterance);
+}
+
 function handleRegenerate() {
   messageRef.value?.scrollIntoView()
   emit('regenerate')
@@ -109,6 +114,13 @@ function handleRegenerate() {
           :as-raw-text="asRawText"
         />
         <div class="flex flex-col">
+					<button
+            v-if="!inversion"
+            class="mb-2 transition text-neutral-300 hover:text-neutral-800 dark:hover:text-neutral-300"
+            @click="ttsPlay"
+          >
+            <SvgIcon icon="ri:volume-down-fill" />
+          </button>
           <button
             v-if="!inversion"
             class="mb-2 transition text-neutral-300 hover:text-neutral-800 dark:hover:text-neutral-300"
