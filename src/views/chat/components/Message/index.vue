@@ -75,8 +75,8 @@ function handleSelect(key: 'copyText' | 'delete' | 'toggleRenderType') {
 }
 
 function ttsPlay(){
-	var utterance = new SpeechSynthesisUtterance(asRawText);
-	speechSynthesis.speak(utterance);
+	const utterance = new SpeechSynthesisUtterance(asRawText);
+	window.speechSynthesis.speak(utterance);
 }
 
 function handleRegenerate() {
