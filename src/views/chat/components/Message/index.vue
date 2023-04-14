@@ -74,9 +74,9 @@ function handleSelect(key: 'copyText' | 'delete' | 'toggleRenderType') {
   }
 }
 
-function ttsPlay(){
-	const utterance = new SpeechSynthesisUtterance(asRawText.value);
-	window.speechSynthesis.speak(utterance);
+function ttsPlay() {
+  const utterance = new SpeechSynthesisUtterance(props.text)
+  window.speechSynthesis.speak(utterance)
 }
 
 function handleRegenerate() {
@@ -114,7 +114,7 @@ function handleRegenerate() {
           :as-raw-text="asRawText"
         />
         <div class="flex flex-col">
-					<button
+          <button
             v-if="!inversion"
             class="mb-2 transition text-neutral-300 hover:text-neutral-800 dark:hover:text-neutral-300"
             @click="ttsPlay"
