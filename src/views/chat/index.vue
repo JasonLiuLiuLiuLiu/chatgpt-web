@@ -1,9 +1,10 @@
 <script setup lang='ts'>
 import type { Ref } from 'vue'
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
-import { NAutoComplete, NButton, NInput, useDialog, useMessage } from 'naive-ui'
+import type { MessageReactive } from 'naive-ui'
+import { NAutoComplete, NButton, NInput, NSpin, useDialog, useMessage } from 'naive-ui'
 import html2canvas from 'html2canvas'
 import { Message } from './components'
 import { useScroll } from './hooks/useScroll'
@@ -13,9 +14,10 @@ import { useUsingContext } from './hooks/useUsingContext'
 import HeaderComponent from './components/Header/index.vue'
 import { HoverButton, SvgIcon } from '@/components/common'
 import { useBasicLayout } from '@/hooks/useBasicLayout'
-import { useChatStore, usePromptStore } from '@/store'
+import { useAuthStore, useChatStore, usePromptStore } from '@/store'
 import { fetchChatAPIProcess } from '@/api'
 import { t } from '@/locales'
+import { debounce } from '@/utils/functions/debounce'
 
 let controller = new AbortController()
 
@@ -24,6 +26,7 @@ const openLongReply = import.meta.env.VITE_GLOB_OPEN_LONG_REPLY === 'true'
 const route = useRoute()
 const dialog = useDialog()
 const ms = useMessage()
+const authStore = useAuthStore()
 
 const chatStore = useChatStore()
 
@@ -31,7 +34,7 @@ useCopyCode()
 
 const { isMobile } = useBasicLayout()
 const { addChat, updateChat, updateChatSome, getChatByUuidAndIndex } = useChat()
-const { scrollRef, scrollToBottom, scrollToBottomIfAtBottom } = useScroll()
+const { scrollRef, scrollToBottom, scrollToBottomIfAtBottom, scrollTo } = useScroll()
 const { usingContext, toggleUsingContext } = useUsingContext()
 
 const { uuid } = route.params as { uuid: string }
@@ -40,8 +43,13 @@ const dataSources = computed(() => chatStore.getChatByUuid(+uuid))
 const conversationList = computed(() => dataSources.value.filter(item => (!item.inversion && !!item.conversationOptions)))
 
 const prompt = ref<string>('')
+const firstLoading = ref<boolean>(false)
 const loading = ref<boolean>(false)
 const inputRef = ref<Ref | null>(null)
+
+let loadingms: MessageReactive
+let allmsg: MessageReactive
+let prevScrollTop: number
 
 // 添加PromptStore
 const promptStore = usePromptStore()
@@ -70,9 +78,11 @@ async function onConversation() {
 
   controller = new AbortController()
 
+  const chatUuid = Date.now()
   addChat(
     +uuid,
     {
+      uuid: chatUuid,
       dateTime: new Date().toLocaleString(),
       text: message,
       inversion: true,
@@ -95,6 +105,7 @@ async function onConversation() {
   addChat(
     +uuid,
     {
+      uuid: chatUuid,
       dateTime: new Date().toLocaleString(),
       text: '',
       loading: true,
@@ -110,6 +121,8 @@ async function onConversation() {
     let lastText = ''
     const fetchChatAPIOnce = async () => {
       await fetchChatAPIProcess<Chat.ConversationResponse>({
+        roomId: +uuid,
+        uuid: chatUuid,
         prompt: message,
         options,
         signal: controller.signal,
@@ -123,6 +136,14 @@ async function onConversation() {
             chunk = responseText.substring(lastIndex)
           try {
             const data = JSON.parse(chunk)
+            const usage = (data.detail && data.detail.usage)
+              ? {
+                  completion_tokens: data.detail.usage.completion_tokens || null,
+                  prompt_tokens: data.detail.usage.prompt_tokens || null,
+                  total_tokens: data.detail.usage.total_tokens || null,
+                  estimated: data.detail.usage.estimated || null,
+                }
+              : undefined
             updateChat(
               +uuid,
               dataSources.value.length - 1,
@@ -134,10 +155,11 @@ async function onConversation() {
                 loading: true,
                 conversationOptions: { conversationId: data.conversationId, parentMessageId: data.id },
                 requestOptions: { prompt: message, options: { ...options } },
+                usage,
               },
             )
 
-            if (openLongReply && data.detail.choices[0].finish_reason === 'length') {
+            if (openLongReply && data.detail && data.detail.choices.length > 0 && data.detail.choices[0].finish_reason === 'length') {
               options.parentMessageId = data.id
               lastText = data.text
               message = ''
@@ -222,7 +244,7 @@ async function onRegenerate(index: number) {
     options = { ...requestOptions.options }
 
   loading.value = true
-
+  const chatUuid = dataSources.value[index].uuid
   updateChat(
     +uuid,
     index,
@@ -241,6 +263,9 @@ async function onRegenerate(index: number) {
     let lastText = ''
     const fetchChatAPIOnce = async () => {
       await fetchChatAPIProcess<Chat.ConversationResponse>({
+        roomId: +uuid,
+        uuid: chatUuid || Date.now(),
+        regenerate: true,
         prompt: message,
         options,
         signal: controller.signal,
@@ -254,6 +279,14 @@ async function onRegenerate(index: number) {
             chunk = responseText.substring(lastIndex)
           try {
             const data = JSON.parse(chunk)
+            const usage = (data.detail && data.detail.usage)
+              ? {
+                  completion_tokens: data.detail.usage.completion_tokens || null,
+                  prompt_tokens: data.detail.usage.prompt_tokens || null,
+                  total_tokens: data.detail.usage.total_tokens || null,
+                  estimated: data.detail.usage.estimated || null,
+                }
+              : undefined
             updateChat(
               +uuid,
               index,
@@ -265,10 +298,11 @@ async function onRegenerate(index: number) {
                 loading: true,
                 conversationOptions: { conversationId: data.conversationId, parentMessageId: data.id },
                 requestOptions: { prompt: message, options: { ...options } },
+                usage,
               },
             )
 
-            if (openLongReply && data.detail.choices[0].finish_reason === 'length') {
+            if (openLongReply && data.detail && data.detail.choices.length > 0 && data.detail.choices[0].finish_reason === 'length') {
               options.parentMessageId = data.id
               lastText = data.text
               message = ''
@@ -411,6 +445,40 @@ function handleStop() {
   }
 }
 
+async function loadMoreMessage(event: any) {
+  const chatIndex = chatStore.chat.findIndex(d => d.uuid === +uuid)
+  if (chatIndex <= -1)
+    return
+
+  const scrollPosition = event.target.scrollHeight - event.target.scrollTop
+
+  const lastId = chatStore.chat[chatIndex].data[0].uuid
+  await chatStore.syncChat({ uuid: +uuid } as Chat.History, lastId, () => {
+    loadingms && loadingms.destroy()
+    nextTick(() => scrollTo(event.target.scrollHeight - scrollPosition))
+  }, () => {
+    loadingms = ms.loading(
+      '加载中...', {
+        duration: 0,
+      },
+    )
+  }, () => {
+    allmsg && allmsg.destroy()
+    allmsg = ms.warning('没有更多了', {
+      duration: 1000,
+    })
+  })
+}
+
+const handleLoadMoreMessage = debounce(loadMoreMessage, 300)
+
+async function handleScroll(event: any) {
+  const scrollTop = event.target.scrollTop
+  if (scrollTop < 50 && (scrollTop < prevScrollTop || prevScrollTop === undefined))
+    handleLoadMoreMessage(event)
+  prevScrollTop = scrollTop
+}
+
 // 可优化部分
 // 搜索选项计算，这里使用value作为索引项，所以当出现重复value时渲染异常(多项同时出现选中效果)
 // 理想状态下其实应该是key作为索引项,但官方的renderOption会出现问题，所以就需要value反renderLabel实现
@@ -455,9 +523,16 @@ const footerClass = computed(() => {
 })
 
 onMounted(() => {
-  scrollToBottom()
-  if (inputRef.value && !isMobile.value)
-    inputRef.value?.focus()
+  firstLoading.value = true
+  debounce(() => {
+    // 直接刷 极小概率不请求
+    chatStore.syncChat({ uuid: Number(uuid) } as Chat.History, undefined, () => {
+      firstLoading.value = false
+      scrollToBottom()
+      if (inputRef.value && !isMobile.value)
+        inputRef.value?.focus()
+    })
+  }, 200)()
 })
 
 onUnmounted(() => {
@@ -475,41 +550,44 @@ onUnmounted(() => {
       @toggle-using-context="toggleUsingContext"
     />
     <main class="flex-1 overflow-hidden">
-      <div id="scrollRef" ref="scrollRef" class="h-full overflow-hidden overflow-y-auto">
+      <div id="scrollRef" ref="scrollRef" class="h-full overflow-hidden overflow-y-auto" @scroll="handleScroll">
         <div
           id="image-wrapper"
           class="w-full max-w-screen-xl m-auto dark:bg-[#101014]"
           :class="[isMobile ? 'p-2' : 'p-4']"
         >
-          <template v-if="!dataSources.length">
-            <div class="flex items-center justify-center mt-4 text-center text-neutral-300">
-              <SvgIcon icon="ri:bubble-chart-fill" class="mr-2 text-3xl" />
-              <span>Aha~</span>
-            </div>
-          </template>
-          <template v-else>
-            <div>
-              <Message
-                v-for="(item, index) of dataSources"
-                :key="index"
-                :date-time="item.dateTime"
-                :text="item.text"
-                :inversion="item.inversion"
-                :error="item.error"
-                :loading="item.loading"
-                @regenerate="onRegenerate(index)"
-                @delete="handleDelete(index)"
-              />
-              <div class="sticky bottom-0 left-0 flex justify-center">
-                <NButton v-if="loading" type="warning" @click="handleStop">
-                  <template #icon>
-                    <SvgIcon icon="ri:stop-circle-line" />
-                  </template>
-                  Stop Responding
-                </NButton>
+          <NSpin :show="firstLoading">
+            <template v-if="!dataSources.length">
+              <div class="flex items-center justify-center mt-4 text-center text-neutral-300">
+                <SvgIcon icon="ri:bubble-chart-fill" class="mr-2 text-3xl" />
+                <span>Aha~</span>
               </div>
-            </div>
-          </template>
+            </template>
+            <template v-else>
+              <div>
+                <Message
+                  v-for="(item, index) of dataSources"
+                  :key="index"
+                  :date-time="item.dateTime"
+                  :text="item.text"
+                  :inversion="item.inversion"
+                  :usage="item && item.usage || undefined"
+                  :error="item.error"
+                  :loading="item.loading"
+                  @regenerate="onRegenerate(index)"
+                  @delete="handleDelete(index)"
+                />
+                <div class="sticky bottom-0 left-0 flex justify-center">
+                  <NButton v-if="loading" type="warning" @click="handleStop">
+                    <template #icon>
+                      <SvgIcon icon="ri:stop-circle-line" />
+                    </template>
+                    Stop Responding
+                  </NButton>
+                </div>
+              </div>
+            </template>
+          </NSpin>
         </div>
       </div>
     </main>
@@ -536,6 +614,7 @@ onUnmounted(() => {
               <NInput
                 ref="inputRef"
                 v-model:value="prompt"
+                :disabled="authStore.token === undefined"
                 type="textarea"
                 :placeholder="placeholder"
                 :autosize="{ minRows: 1, maxRows: isMobile ? 4 : 8 }"
