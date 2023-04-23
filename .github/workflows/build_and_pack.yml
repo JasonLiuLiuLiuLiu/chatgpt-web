@@ -1,14 +1,14 @@
 # This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests across different versions of node
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs
 
-
 name: Chat-Web Build and Deploy
 
 on:
-  workflow_dispatch:
+  push:
+    branches: "*"
 
 jobs:
-  Build_And_Deploy:
+  Build_And_Pack:
 
     runs-on: ubuntu-latest
     steps:
@@ -56,41 +56,12 @@ jobs:
         cp -r service/* web/
         cp -r font-end/dist/ web/public
         cp -r backend/build/ web/build
-
-#    - name: Archive production artifacts
-#      uses: actions/upload-artifact@v3
-#      with:
-#        name: service-artifact
-#        path: |
-#          pack
-
-    - name: stop chatgpt-web
-      uses: appleboy/ssh-action@v0.1.10
+    - name: Get branch name
+      id: branch-name
+      uses: tj-actions/branch-names@v6
+    - name: Archive production artifacts
+      uses: actions/upload-artifact@v3
       with:
-         host: ${{ secrets.HOST }}
-         username: ${{ secrets.USERNAME }}
-         password: ${{ secrets.PASSWORD }}
-         port: ${{ secrets.PORT }}
-         script: |
-          pm2 stop pnpm
-
-    - name: copy file to server
-      uses: appleboy/scp-action@v0.1.4
-      with:
-         host: ${{ secrets.HOST }}
-         username: ${{ secrets.USERNAME }}
-         password: ${{ secrets.PASSWORD }}
-         port: ${{ secrets.PORT }}
-         overwrite: "true"
-         source: web/*
-         target: /www/html/chatgpt
-
-    - name: start chatgpt-web
-      uses: appleboy/ssh-action@v0.1.10
-      with:
-         host: ${{ secrets.HOST }}
-         username: ${{ secrets.USERNAME }}
-         password: ${{ secrets.PASSWORD }}
-         port: ${{ secrets.PORT }}
-         script: |
-          pm2 start pnpm
+        name:  ${{ steps.branch-name.outputs.current_branch }}-${{ github.run_number }}
+        path: |
+          web
