@@ -87,4 +87,4 @@ jobs:
           pm2 stop pnpm
           mv -f /www/html/tmp/web/* /www/html/chatgpt
           pm2 start pnpm
-          rm /www/html/tmp/*
+          rm -rf /www/html/tmp/*
