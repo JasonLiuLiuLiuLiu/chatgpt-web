@@ -62,17 +62,8 @@ jobs:
 #      with:
 #        name: service-artifact
 #        path: |
-#          pack
+#          web
 
-    - name: stop chatgpt-web
-      uses: appleboy/ssh-action@v0.1.10
-      with:
-         host: ${{ secrets.HOST }}
-         username: ${{ secrets.USERNAME }}
-         password: ${{ secrets.PASSWORD }}
-         port: ${{ secrets.PORT }}
-         script: |
-          pm2 stop pnpm
 
     - name: copy file to server
       uses: appleboy/scp-action@v0.1.4
@@ -83,7 +74,7 @@ jobs:
          port: ${{ secrets.PORT }}
          overwrite: "true"
          source: web/*
-         target: /www/html/chatgpt
+         target: /www/html/tmp
 
     - name: start chatgpt-web
       uses: appleboy/ssh-action@v0.1.10
@@ -93,4 +84,7 @@ jobs:
          password: ${{ secrets.PASSWORD }}
          port: ${{ secrets.PORT }}
          script: |
+          pm2 stop pnpm
+          mv -f /www/html/tmp/web/* /www/html/chatgpt
           pm2 start pnpm
+          rm /www/html/tmp/*
