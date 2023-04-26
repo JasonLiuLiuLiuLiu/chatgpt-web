@@ -56,12 +56,36 @@ jobs:
         cp -r service/* web/
         cp -r font-end/dist/ web/public
         cp -r backend/build/ web/build
-    - name: Get branch name
-      id: branch-name
-      uses: tj-actions/branch-names@v6
-    - name: Archive production artifacts
-      uses: actions/upload-artifact@v3
+    # - name: Get branch name
+    #   id: branch-name
+    #   uses: tj-actions/branch-names@v6
+    # - name: Archive production artifacts
+    #   uses: actions/upload-artifact@v3
+    #   with:
+    #     name:  ${{ steps.branch-name.outputs.current_branch }}-${{ github.run_number }}
+    #     path: |
+    #       web
+
+    - name: copy file to server
+      uses: appleboy/scp-action@v0.1.4
       with:
-        name:  ${{ steps.branch-name.outputs.current_branch }}-${{ github.run_number }}
-        path: |
-          web
+         host: ${{ secrets.HOST }}
+         username: ${{ secrets.USERNAME }}
+         password: ${{ secrets.PASSWORD }}
+         port: ${{ secrets.PORT }}
+         overwrite: "true"
+         source: web/*
+         target: /www/html/tmp
+
+    - name: start chatgpt-web
+      uses: appleboy/ssh-action@v0.1.10
+      with:
+         host: ${{ secrets.HOST }}
+         username: ${{ secrets.USERNAME }}
+         password: ${{ secrets.PASSWORD }}
+         port: ${{ secrets.PORT }}
+         script: |
+          pm2 stop pnpm
+          mv -f /www/html/tmp/web/* /www/html/chatgpt
+          pm2 start pnpm
+          rm -rf /www/html/tmp/*

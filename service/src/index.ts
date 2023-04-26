@@ -112,10 +112,7 @@ router.post('/translate', auth, async (req, res) => {
 
     const respMes = await translateText(message, type)
 
-    // 测试
     res.send({ status: 'Success', message: '', data: respMes })
-    const response = await chatConfig()
-    res.send(response)
   }
   catch (error) {
     res.send(error)
