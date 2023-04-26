@@ -1,4 +1,5 @@
 import express from 'express'
+import AWS from 'aws-sdk'
 import type { RequestProps } from './types'
 import type { ChatMessage } from './chatgpt'
 import { chatConfig, chatReplyProcess, currentModel } from './chatgpt'
@@ -79,6 +80,45 @@ router.post('/verify', async (req, res) => {
   }
   catch (error) {
     res.send({ status: 'Fail', message: error.message, data: null })
+  }
+})
+
+AWS.config.update({ region: 'us-west-2', accessKeyId: process.env.AWS_TRANSLATE_ACCESS_KEY, secretAccessKey: process.env.AWS_TRANSLATE_SECRET_KEY })
+
+// 创建Translate服务客户端对象
+const translate = new AWS.Translate()
+
+// 翻译函数
+async function translateText(text, type) {
+  const params = {
+    SourceLanguageCode: 'auto',
+    TargetLanguageCode: type,
+    Text: text,
+  }
+
+  // eslint-disable-next-line no-useless-catch
+  try {
+    const data = await translate.translateText(params).promise()
+    return data.TranslatedText
+  }
+  catch (err) {
+    throw err
+  }
+}
+
+router.post('/translate', auth, async (req, res) => {
+  try {
+    const { message, type } = req.body as { message: string; type: string }
+
+    const respMes = await translateText(message, type)
+
+    // 测试
+    res.send({ status: 'Success', message: '', data: respMes })
+    const response = await chatConfig()
+    res.send(response)
+  }
+  catch (error) {
+    res.send(error)
   }
 })
 

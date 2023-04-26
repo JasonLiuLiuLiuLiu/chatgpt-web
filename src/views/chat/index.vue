@@ -14,7 +14,7 @@ import HeaderComponent from './components/Header/index.vue'
 import { HoverButton, SvgIcon } from '@/components/common'
 import { useBasicLayout } from '@/hooks/useBasicLayout'
 import { useChatStore, usePromptStore } from '@/store'
-import { fetchChatAPIProcess } from '@/api'
+import { fetchChatAPIProcess, translateMessage } from '@/api'
 import { t } from '@/locales'
 
 let controller = new AbortController()
@@ -41,6 +41,7 @@ const conversationList = computed(() => dataSources.value.filter(item => (!item.
 
 const prompt = ref<string>('')
 const loading = ref<boolean>(false)
+const translating = ref<boolean>(false)
 const inputRef = ref<Ref | null>(null)
 
 // 添加PromptStore
@@ -57,6 +58,33 @@ dataSources.value.forEach((item, index) => {
 
 function handleSubmit() {
   onConversation()
+}
+
+async function translateEn() {
+  await translatePrompt('en')
+}
+
+async function translateZh() {
+  await translatePrompt('zh')
+}
+
+async function translatePrompt(type: string) {
+  const message = prompt.value
+
+  if (translating.value)
+    return
+
+  if (!message || message.trim() === '')
+    return
+
+  translating.value = true
+  try {
+    const result = await translateMessage<string>(message, type)
+    prompt.value = result.data
+  }
+  finally {
+    translating.value = false
+  }
 }
 
 async function onConversation() {
@@ -444,7 +472,7 @@ const placeholder = computed(() => {
 })
 
 const buttonDisabled = computed(() => {
-  return loading.value || !prompt.value || prompt.value.trim() === ''
+  return loading.value || translating.value || !prompt.value || prompt.value.trim() === ''
 })
 
 const footerClass = computed(() => {
@@ -507,6 +535,12 @@ onUnmounted(() => {
                   </template>
                   Stop Responding
                 </NButton>
+                <NButton v-if="translating" type="primary">
+                  <template #icon>
+                    <SvgIcon icon="eos-icons:bubble-loading" />
+                  </template>
+                  Translating
+                </NButton>
               </div>
             </div>
           </template>
@@ -546,6 +580,20 @@ onUnmounted(() => {
               />
             </template>
           </NAutoComplete>
+          <NButton type="primary" :disabled="buttonDisabled" @click="translateEn">
+            <template #icon>
+              <span class="dark:text-black">
+                <SvgIcon icon="icon-park-outline:english" />
+              </span>
+            </template>
+          </NButton>
+          <NButton type="primary" :disabled="buttonDisabled" @click="translateZh">
+            <template #icon>
+              <span class="dark:text-black">
+                <SvgIcon icon="icon-park-outline:chinese" />
+              </span>
+            </template>
+          </NButton>
           <NButton type="primary" :disabled="buttonDisabled" @click="handleSubmit">
             <template #icon>
               <span class="dark:text-black">

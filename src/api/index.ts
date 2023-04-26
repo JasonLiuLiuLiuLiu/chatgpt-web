@@ -13,7 +13,12 @@ export function fetchChatAPI<T = any>(
     signal,
   })
 }
-
+export function translateMessage<T>(message: string, type: string) {
+  return post<T>({
+    url: '/translate',
+    data: { message, type },
+  })
+}
 export function fetchChatConfig<T = any>() {
   return post<T>({
     url: '/config',
