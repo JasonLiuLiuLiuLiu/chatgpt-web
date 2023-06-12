@@ -17,6 +17,7 @@ const i18n = createI18n({
   allowComposition: true,
   messages: {
     'en-US': enUS,
+    'ru-RU': enUS,
     'zh-CN': zhCN,
     'zh-TW': zhTW,
     'ko-KR': koKR,
