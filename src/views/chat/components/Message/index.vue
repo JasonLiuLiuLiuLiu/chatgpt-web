@@ -1,6 +1,6 @@
 <script setup lang='ts'>
 import { computed, ref } from 'vue'
-import { NDropdown, useMessage } from 'naive-ui'
+import { NButtonGroup, NDropdown, NPopover, NSpace, useMessage } from 'naive-ui'
 import AvatarComponent from './Avatar.vue'
 import TextComponent from './Text.vue'
 import { SvgIcon } from '@/components/common'
@@ -15,16 +15,23 @@ interface Props {
   inversion?: boolean
   error?: boolean
   loading?: boolean
+  responseCount?: number
+  usage?: {
+    completion_tokens: number
+    prompt_tokens: number
+    total_tokens: number
+    estimated: boolean
+  }
 }
+const props = defineProps<Props>()
+
+const emit = defineEmits<Emit>()
 
 interface Emit {
   (ev: 'regenerate'): void
   (ev: 'delete'): void
+  (ev: 'responseHistory', historyIndex: number): void
 }
-
-const props = defineProps<Props>()
-
-const emit = defineEmits<Emit>()
 
 const { isMobile } = useBasicLayout()
 
@@ -38,15 +45,10 @@ const asRawText = ref(props.inversion)
 
 const messageRef = ref<HTMLElement>()
 
-const synth = window.speechSynthesis
-const msg = new SpeechSynthesisUtterance()
-const ttsPlaying = ref<boolean>(false)
-msg.addEventListener('end', () => {
-  ttsPlaying.value = false
-})
-msg.addEventListener('start', () => {
-  ttsPlaying.value = true
-})
+const indexRef = ref<number>(0)
+indexRef.value = props.responseCount ?? 0
+
+const url_openai_token = 'https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them'
 
 const options = computed(() => {
   const common = [
@@ -86,24 +88,6 @@ function handleSelect(key: 'copyText' | 'delete' | 'toggleRenderType') {
   }
 }
 
-function ttsPlayStart() {
-  if (ttsPlaying.value)
-    return
-
-  if (!props.text)
-    return
-  msg.text = props.text
-  synth.speak(msg)
-}
-
-function ttsPlayStop() {
-  if (!ttsPlaying.value)
-    return
-
-  synth.cancel()
-  ttsPlaying.value = false
-}
-
 function handleRegenerate() {
   messageRef.value?.scrollIntoView()
   emit('regenerate')
@@ -117,6 +101,13 @@ async function handleCopy() {
   catch {
     message.error('复制失败')
   }
+}
+
+async function handlePreviousResponse(next: number) {
+  if (indexRef.value + next < 1 || indexRef.value + next > props.responseCount!)
+    return
+  indexRef.value += next
+  emit('responseHistory', indexRef.value - 1)
 }
 </script>
 
@@ -133,8 +124,49 @@ async function handleCopy() {
       <AvatarComponent :image="inversion" />
     </div>
     <div class="overflow-hidden text-sm " :class="[inversion ? 'items-end' : 'items-start']">
-      <p class="text-xs text-[#b4bbc4]" :class="[inversion ? 'text-right' : 'text-left']">
-        {{ dateTime }}
+      <p v-if="inversion" class="text-xs text-[#b4bbc4]" :class="[inversion ? 'text-right' : 'text-left']">
+        {{ new Date(dateTime as string).toLocaleString() }}
+      </p>
+      <p v-else class="text-xs text-[#b4bbc4]" :class="[inversion ? 'text-right' : 'text-left']">
+        <NSpace>
+          {{ new Date(dateTime as string).toLocaleString() }}
+          <NButtonGroup v-if="!inversion && responseCount && responseCount > 1">
+            <NButton
+              style="cursor: pointer;"
+              :disabled="indexRef === 1"
+              @click="handlePreviousResponse(-1)"
+            >
+              <svg stroke="currentColor" fill="none" stroke-width="1.5" viewBox="5 -5 24 24" stroke-linecap="round" stroke-linejoin="round" class="h-3 w-3" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><polyline points="15 18 9 12 15 6" /></svg>
+            </NButton>
+            <span class="text-xs text-[#b4bbc4]"> {{ indexRef }} / {{ responseCount }}</span>
+            <NButton
+              style="cursor: pointer;"
+              :disabled="indexRef === responseCount"
+              @click="handlePreviousResponse(1)"
+            >
+              <svg stroke="currentColor" fill="none" stroke-width="1.5" viewBox="-5 -5 24 24" stroke-linecap="round" stroke-linejoin="round" class="h-3 w-3" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><polyline points="9 18 15 12 9 6" /></svg>
+            </NButton>
+          </NButtonGroup>
+          <template v-if="usage">
+            <NPopover trigger="hover">
+              <template #trigger>
+                <span>
+                  <span>[</span>
+                  <span>{{ usage.estimated ? '~' : '' }}</span>
+                  <span>{{ usage.prompt_tokens }}+{{ usage.completion_tokens }}={{ usage.total_tokens }}</span>
+                  <span>]</span>
+                </span>
+              </template>
+              <span class="text-xs">
+                {{ usage.estimated ? t('chat.usageEstimate') : '' }}
+                {{ t('chat.usagePrompt') }} {{ usage.prompt_tokens }}
+                + {{ t('chat.usageResponse') }} {{ usage.completion_tokens }}
+                = {{ t('chat.usageTotal') }}<a :href="url_openai_token" target="_blank">(?)</a>
+                {{ usage.total_tokens }}
+              </span>
+            </NPopover>
+          </template>
+        </NSpace>
       </p>
       <div
         class="flex items-end gap-1 mt-2"
@@ -149,20 +181,6 @@ async function handleCopy() {
           :as-raw-text="asRawText"
         />
         <div class="flex flex-col">
-          <button
-            v-if="!inversion && !ttsPlaying"
-            class="mb-2 transition text-neutral-300 hover:text-neutral-800 dark:hover:text-neutral-300"
-            @click="ttsPlayStart"
-          >
-            <SvgIcon icon="ri:volume-up-fill" />
-          </button>
-          <button
-            v-if="!inversion && ttsPlaying"
-            class="mb-2 transition text-neutral-300 hover:text-neutral-800 dark:hover:text-neutral-300"
-            @click="ttsPlayStop"
-          >
-            <SvgIcon icon="ri:stop-mini-fill" />
-          </button>
           <button
             v-if="!inversion"
             class="mb-2 transition text-neutral-300 hover:text-neutral-800 dark:hover:text-neutral-300"
