@@ -4,9 +4,11 @@ import { NButton, NDataTable, NModal, NSelect, NTag, useDialog, useMessage } fro
 import { Status, UserInfo, UserRole, userRoleOptions } from './model'
 import { fetchGetUsers, fetchUpdateUserRole, fetchUpdateUserStatus } from '@/api'
 import { t } from '@/locales'
+import { useBasicLayout } from '@/hooks/useBasicLayout'
 
 const ms = useMessage()
 const dialog = useDialog()
+const { isMobile } = useBasicLayout()
 const loading = ref(false)
 const show = ref(false)
 const handleSaving = ref(false)
@@ -79,7 +81,7 @@ const columns = [
           },
           onClick: () => handleUpdateUserStatus(row._id, Status.Deleted),
         },
-        { default: () => t('chat.deleteUser') },
+        { default: () => t('common.delete') },
       ))
       if (row.status === Status.Normal) {
         actions.push(h(
@@ -88,7 +90,7 @@ const columns = [
             size: 'small',
             type: 'primary',
             style: {
-              marginRight: '6px',
+              marginRight: '8px',
             },
             onClick: () => handleEditUser(row),
           },
@@ -214,7 +216,7 @@ onMounted(async () => {
     </div>
   </div>
 
-  <NModal v-model:show="show" :auto-focus="false" preset="card" style="width:50%;">
+  <NModal v-model:show="show" :auto-focus="false" preset="card" :style="{ width: !isMobile ? '50%' : '100%' }">
     <div class="p-4 space-y-5 min-h-[200px]">
       <div class="space-y-6">
         <div class="flex items-center space-x-4">
