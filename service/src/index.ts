@@ -2,13 +2,14 @@ import express from 'express'
 import jwt from 'jsonwebtoken'
 import * as dotenv from 'dotenv'
 import { ObjectId } from 'mongodb'
+import { textTokens } from 'gpt-token'
 import type { RequestProps } from './types'
 import type { ChatMessage } from './chatgpt'
 import { abortChatProcess, chatConfig, chatReplyProcess, containsSensitiveWords, initAuditService } from './chatgpt'
 import { auth, getUserId } from './middleware/auth'
 import { clearApiKeyCache, clearConfigCache, getApiKeys, getCacheApiKeys, getCacheConfig, getOriginConfig } from './storage/config'
-import type { AuditConfig, CHATMODEL, ChatInfo, ChatOptions, Config, KeyConfig, MailConfig, SiteConfig, UsageResponse, UserInfo } from './storage/model'
-import { Status, UserRole, chatModelOptions } from './storage/model'
+import type { AuditConfig, CHATMODEL, ChatInfo, ChatOptions, Config, KeyConfig, MailConfig, SiteConfig, UserInfo } from './storage/model'
+import { Status, UsageResponse, UserRole, chatModelOptions } from './storage/model'
 import {
   clearChat,
   createChatRoom,
@@ -33,10 +34,10 @@ import {
   updateConfig,
   updateRoomPrompt,
   updateRoomUsingContext,
+  updateUser,
   updateUserChatModel,
   updateUserInfo,
   updateUserPassword,
-  updateUserRole,
   updateUserStatus,
   upsertKey,
   verifyUser,
@@ -395,6 +396,16 @@ router.post('/chat-process', [auth, limiter], async (req, res) => {
       room,
     })
     // return the whole response including usage
+    if (!result.data.detail?.usage) {
+      if (!result.data.detail)
+        result.data.detail = {}
+      result.data.detail.usage = new UsageResponse()
+      // 因为 token 本身不计算, 所以这里默认以 gpt 3.5 的算做一个伪统计
+      result.data.detail.usage.prompt_tokens = textTokens(prompt, 'gpt-3.5-turbo-0613')
+      result.data.detail.usage.completion_tokens = textTokens(result.data.text, 'gpt-3.5-turbo-0613')
+      result.data.detail.usage.total_tokens = result.data.detail.usage.prompt_tokens + result.data.detail.usage.completion_tokens
+      result.data.detail.usage.estimated = true
+    }
     res.write(`\n${JSON.stringify(result.data)}`)
   }
   catch (error) {
@@ -502,7 +513,7 @@ router.post('/user-register', authLimiter, async (req, res) => {
     }
     const newPassword = md5(password)
     const isRoot = username.toLowerCase() === process.env.ROOT_USER
-    await createUser(username, newPassword, isRoot)
+    await createUser(username, newPassword, isRoot ? [UserRole.Admin] : [UserRole.User])
 
     if (isRoot) {
       res.send({ status: 'Success', message: '注册成功 | Register success', data: null })
@@ -720,10 +731,17 @@ router.post('/user-status', rootAuth, async (req, res) => {
   }
 })
 
-router.post('/user-role', rootAuth, async (req, res) => {
+router.post('/user-edit', rootAuth, async (req, res) => {
   try {
-    const { userId, roles } = req.body as { userId: string; roles: UserRole[] }
-    await updateUserRole(userId, roles)
+    const { userId, email, password, roles } = req.body as { userId?: string; email: string; password: string; roles: UserRole[] }
+    if (userId) {
+      await updateUser(userId, roles, password)
+    }
+    else {
+      const newPassword = md5(password)
+      const user = await createUser(email, newPassword, roles)
+      await updateUserStatus(user._id.toString(), Status.Normal)
+    }
     res.send({ status: 'Success', message: '更新成功 | Update successfully' })
   }
   catch (error) {
