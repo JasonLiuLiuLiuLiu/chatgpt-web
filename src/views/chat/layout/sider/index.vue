@@ -82,6 +82,16 @@ watch(
         </div>
         <div class="p-4">
           <NButton block @click="show = true">
+            Next Web
+          </NButton>
+        </div>
+        <div class="p-4">
+          <NButton block @click="show = true">
+            New Bing
+          </NButton>
+        </div>
+        <div class="p-4">
+          <NButton block @click="show = true">
             {{ $t('store.siderButton') }}
           </NButton>
         </div>
