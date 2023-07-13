@@ -6,7 +6,7 @@ import List from './List.vue'
 import Footer from './Footer.vue'
 import { useAppStore, useAuthStore, useChatStore } from '@/store'
 import { useBasicLayout } from '@/hooks/useBasicLayout'
-import { PromptStore } from '@/components/common'
+import { HoverButton, PromptStore, SvgIcon } from '@/components/common'
 
 const appStore = useAppStore()
 const authStore = useAuthStore()
@@ -25,6 +25,10 @@ async function handleAdd() {
 
 function handleUpdateCollapsed() {
   appStore.setSiderCollapsed(!collapsed.value)
+}
+
+function openUrl(url: string | URL | undefined) {
+  window.open(url)
 }
 
 const getMobileClass = computed<CSSProperties>(() => {
@@ -80,10 +84,30 @@ watch(
         <div class="flex-1 min-h-0 pb-4 overflow-hidden">
           <List />
         </div>
-        <div class="p-4">
-          <NButton block @click="show = true">
+        <div class="flex items-center justify-between min-w-0 p-4 overflow-hidden dark:border-neutral-800">
+          <HoverButton :tooltip="$t('store.siderButton')" @click="show = true">
+            <span class="text-xl text-[#4f555e] dark:text-white">
+              <SvgIcon icon="solar:shop-broken" />
+            </span>
+          </HoverButton>
+          <HoverButton tooltip="New Bing" @click="openUrl('https://bing.jason.hi.cn')">
+            <span class="text-xl text-[#4f555e] dark:text-white">
+              <SvgIcon icon="jam:bing-circle" />
+            </span>
+          </HoverButton>
+          <HoverButton tooltip="Next Web" @click="openUrl('https://vercel.jason.hi.cn')">
+            <span class="text-xl text-[#4f555e] dark:text-white">
+              <SvgIcon icon="fluent:bot-sparkle-20-regular" />
+            </span>
+          </HoverButton>
+          <HoverButton tooltip="One API" @click="openUrl('https://one-api.jason.hi.cn')">
+            <span class="text-xl text-[#4f555e] dark:text-white">
+              <SvgIcon icon="icon-park-twotone:api" />
+            </span>
+          </HoverButton>
+          <!-- <NButton block @click="show = true">
             {{ $t('store.siderButton') }}
-          </NButton>
+          </NButton> -->
         </div>
       </main>
       <Footer />
