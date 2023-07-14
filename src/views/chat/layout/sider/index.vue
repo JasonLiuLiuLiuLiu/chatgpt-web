@@ -90,17 +90,17 @@ watch(
               <SvgIcon icon="solar:shop-broken" />
             </span>
           </HoverButton>
-          <HoverButton tooltip="New Bing" @click="openUrl('https://bing.jason.hi.cn')">
+          <HoverButton tooltip="new bing" @click="openUrl('https://bing.jason.hi.cn')">
             <span class="text-xl text-[#4f555e] dark:text-white">
               <SvgIcon icon="jam:bing-circle" />
             </span>
           </HoverButton>
-          <HoverButton tooltip="Next Web" @click="openUrl('https://vercel.jason.hi.cn')">
+          <HoverButton tooltip="next web" @click="openUrl('https://vercel.jason.hi.cn')">
             <span class="text-xl text-[#4f555e] dark:text-white">
               <SvgIcon icon="fluent:bot-sparkle-20-regular" />
             </span>
           </HoverButton>
-          <HoverButton tooltip="One API" @click="openUrl('https://one-api.jason.hi.cn')">
+          <HoverButton tooltip="one api" @click="openUrl('https://one-api.jason.hi.cn')">
             <span class="text-xl text-[#4f555e] dark:text-white">
               <SvgIcon icon="icon-park-twotone:api" />
             </span>
