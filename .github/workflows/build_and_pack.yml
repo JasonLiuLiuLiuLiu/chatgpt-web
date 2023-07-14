@@ -5,88 +5,88 @@ name: Chat-Web Build and Pack
 
 on:
   push:
-    branches: "*"
+    branches: '*'
 
 jobs:
   Build_And_Pack:
 
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-node@v3
-      with:
-       node-version: 18
-    - name: install pnpm
-      run: |
-        npm install pnpm -g
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - name: install pnpm
+        run: |
+          npm install pnpm -g
 
-    - name: install rsync
-      run: |
-        sudo apt-get update && sudo apt-get -y install rsync
+      - name: install rsync
+        run: |
+          sudo apt-get update && sudo apt-get -y install rsync
 
-    - name: build front-end
-      working-directory: ./
-      run: |
-        mkdir font-end
-        cp package.json ./font-end
-        cp pnpm-lock.yaml ./font-end
-        rsync -av --exclude 'font-end' * font-end/
-        cd font-end
-        pnpm install
-        pnpm run build
+      - name: build front-end
+        working-directory: ./
+        run: |
+          mkdir font-end
+          cp package.json ./font-end
+          cp pnpm-lock.yaml ./font-end
+          rsync -av --exclude 'font-end' * font-end/
+          cd font-end
+          pnpm install
+          pnpm run build
 
-    - name: build backend
-      working-directory: ./
-      run: |
-        mkdir backend
-        cp -r service/* backend/
-        cd backend
-        pnpm install --no-frozen-lockfile
-        pnpm run build
+      - name: build backend
+        working-directory: ./
+        run: |
+          mkdir backend
+          cp -r service/* backend/
+          cd backend
+          pnpm install --no-frozen-lockfile
+          pnpm run build
 
-    - name: pack build result
-      working-directory: ./
-      run: |
-        mkdir web
-        cp service/package.json web/
-        cp service/pnpm-lock.yaml web/
-        cd web
-        pnpm install --production --no-frozen-lockfile
-        cd ..
-        cp -r service/* web/
-        cp -r font-end/dist/ web/public
-        cp -r backend/build/ web/build
-    # - name: Get branch name
-    #   id: branch-name
-    #   uses: tj-actions/branch-names@v6
-    # - name: Archive production artifacts
-    #   uses: actions/upload-artifact@v3
-    #   with:
-    #     name:  ${{ steps.branch-name.outputs.current_branch }}-${{ github.run_number }}
-    #     path: |
-    #       web
+      - name: pack build result
+        working-directory: ./
+        run: |
+          mkdir web
+          cp service/package.json web/
+          cp service/pnpm-lock.yaml web/
+          cd web
+          pnpm install --production --no-frozen-lockfile
+          cd ..
+          cp -r service/* web/
+          cp -r font-end/dist/ web/public
+          cp -r backend/build/ web/build
+      # - name: Get branch name
+      #   id: branch-name
+      #   uses: tj-actions/branch-names@v6
+      # - name: Archive production artifacts
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name:  ${{ steps.branch-name.outputs.current_branch }}-${{ github.run_number }}
+      #     path: |
+      #       web
 
-    - name: copy file to server
-      uses: appleboy/scp-action@v0.1.4
-      with:
-         host: ${{ secrets.HOST }}
-         username: ${{ secrets.USERNAME }}
-         password: ${{ secrets.PASSWORD }}
-         port: ${{ secrets.PORT }}
-         overwrite: "true"
-         source: web/*
-         target: /www/html/tmp
+      - name: copy file to server
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          port: ${{ secrets.PORT }}
+          overwrite: 'true'
+          source: web/*
+          target: /www/html/tmp
 
-    - name: start chatgpt-web
-      uses: appleboy/ssh-action@v0.1.10
-      with:
-         host: ${{ secrets.HOST }}
-         username: ${{ secrets.USERNAME }}
-         password: ${{ secrets.PASSWORD }}
-         port: ${{ secrets.PORT }}
-         script: |
-          pm2 stop pnpm
-          cp -rf /www/html/tmp/web/* /www/html/chatgpt
-          sed -i -E "s/<title>([^<]*)<\/title>/<title>Hi~ I'm Jason<\/title>/g" /www/html/chatgpt/public/index.html
-          pm2 start pnpm
-          rm -rf /www/html/tmp/*
+      - name: start chatgpt-web
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          port: ${{ secrets.PORT }}
+          script: |
+            pm2 stop pnpm
+            cp -rf /www/html/tmp/web/* /www/html/chatgpt
+            sed -i -E "s/<title>([^<]*)<\/title>/<title>Hi~ I'm Jason<\/title>/g" /www/html/chatgpt/public/index.html
+            pm2 start pnpm
+            rm -rf /www/html/tmp/*
