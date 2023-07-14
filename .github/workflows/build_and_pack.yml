@@ -89,4 +89,4 @@ jobs:
           mv -f /www/html/tmp/web/* /www/html/chatgpt
           sed -i -E "s/<title>([^<]*)<\/title>/<title>Hi~ I'm Jason<\/title>/g" /www/html/chatgpt/public/index.html
           pm2 start pnpm
-          rm -rf /www/html/tmp/*
+
