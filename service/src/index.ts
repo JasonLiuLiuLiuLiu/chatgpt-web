@@ -8,7 +8,7 @@ import type { ChatMessage } from './chatgpt'
 import { abortChatProcess, chatConfig, chatReplyProcess, containsSensitiveWords, initAuditService } from './chatgpt'
 import { auth, getUserId } from './middleware/auth'
 import { clearApiKeyCache, clearConfigCache, getApiKeys, getCacheApiKeys, getCacheConfig, getOriginConfig } from './storage/config'
-import type { AuditConfig, CHATMODEL, ChatInfo, ChatOptions, Config, KeyConfig, MailConfig, SiteConfig, UserInfo } from './storage/model'
+import type { AuditConfig, CHATMODEL, ChatInfo, ChatOptions, Config, KeyConfig, MailConfig, SiteConfig, UserConfig, UserInfo } from './storage/model'
 import { Status, UsageResponse, UserRole, chatModelOptions } from './storage/model'
 import {
   clearChat,
@@ -32,6 +32,7 @@ import {
   updateApiKeyStatus,
   updateChat,
   updateConfig,
+  updateRoomChatModel,
   updateRoomPrompt,
   updateRoomUsingContext,
   updateUser,
@@ -75,6 +76,7 @@ router.get('/chatrooms', auth, async (req, res) => {
         isEdit: false,
         prompt: r.prompt,
         usingContext: r.usingContext === undefined ? true : r.usingContext,
+        chatModel: r.chatModel,
       })
     })
     res.send({ status: 'Success', message: null, data: result })
@@ -116,6 +118,22 @@ router.post('/room-prompt', auth, async (req, res) => {
     const userId = req.headers.userId as string
     const { prompt, roomId } = req.body as { prompt: string; roomId: number }
     const success = await updateRoomPrompt(userId, roomId, prompt)
+    if (success)
+      res.send({ status: 'Success', message: 'Saved successfully', data: null })
+    else
+      res.send({ status: 'Fail', message: 'Saved Failed', data: null })
+  }
+  catch (error) {
+    console.error(error)
+    res.send({ status: 'Fail', message: 'Rename error', data: null })
+  }
+})
+
+router.post('/room-chatmodel', auth, async (req, res) => {
+  try {
+    const userId = req.headers.userId as string
+    const { chatModel, roomId } = req.body as { chatModel: CHATMODEL; roomId: number }
+    const success = await updateRoomChatModel(userId, roomId, chatModel)
     if (success)
       res.send({ status: 'Success', message: 'Saved successfully', data: null })
     else
@@ -557,8 +575,19 @@ router.post('/session', async (req, res) => {
       key: string
       value: string
     }[] = []
+    let userInfo: { name: string; description: string; avatar: string; userId: string; root: boolean; roles: UserRole[]; config: UserConfig }
     if (userId != null) {
       const user = await getUserById(userId)
+      userInfo = {
+        name: user.name,
+        description: user.description,
+        avatar: user.avatar,
+        userId: user._id.toString(),
+        root: user.roles.includes(UserRole.Admin),
+        roles: user.roles,
+        config: user.config,
+      }
+
       const keys = (await getCacheApiKeys()).filter(d => hasAnyRole(d.userRoles, user.roles))
 
       const count: { key: string; count: number }[] = []
@@ -596,6 +625,7 @@ router.post('/session', async (req, res) => {
         title: config.siteConfig.siteTitle,
         chatModels,
         allChatModels: chatModelOptions,
+        userInfo,
       },
     })
   }

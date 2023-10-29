@@ -5,7 +5,8 @@ import { ChatGPTAPI, ChatGPTUnofficialProxyAPI } from 'chatgpt'
 import { SocksProxyAgent } from 'socks-proxy-agent'
 import httpsProxyAgent from 'https-proxy-agent'
 import fetch from 'node-fetch'
-import type { AuditConfig, CHATMODEL, KeyConfig, UserInfo } from 'src/storage/model'
+import type { AuditConfig, CHATMODEL, KeyConfig, UserInfo } from '../storage/model'
+import { Status } from '../storage/model'
 import jwt_decode from 'jwt-decode'
 import dayjs from 'dayjs'
 import type { TextAuditService } from '../utils/textAudit'
@@ -14,7 +15,7 @@ import { getCacheApiKeys, getCacheConfig, getOriginConfig } from '../storage/con
 import { sendResponse } from '../utils'
 import { hasAnyRole, isNotEmptyString } from '../utils/is'
 import type { ChatContext, ChatGPTUnofficialProxyAPIOptions, JWT, ModelConfig } from '../types'
-import { getChatByMessageId, updateRoomAccountId } from '../storage/mongo'
+import { getChatByMessageId, updateRoomAccountId, updateRoomChatModel } from '../storage/mongo'
 import type { RequestOptions } from './types'
 
 const { HttpsProxyAgent } = httpsProxyAgent
@@ -113,6 +114,8 @@ async function chatReplyProcess(options: RequestOptions) {
       || (!options.lastContext.conversationId && options.lastContext.parentMessageId)))
       throw new Error('无法在一个房间同时使用 AccessToken 以及 Api，请联系管理员，或新开聊天室进行对话 | Unable to use AccessToken and Api at the same time in the same room, please contact the administrator or open a new chat room for conversation')
   }
+
+  updateRoomChatModel(userId, options.room.roomId, model)
 
   const { message, lastContext, process, systemMessage, temperature, top_p } = options
 
@@ -344,22 +347,32 @@ async function getMessageById(id: string): Promise<ChatMessage | undefined> {
   const chatInfo = await getChatByMessageId(isPrompt ? id.substring(7) : id)
 
   if (chatInfo) {
-    if (isPrompt) { // prompt
-      return {
-        id,
-        conversationId: chatInfo.options.conversationId,
-        parentMessageId: chatInfo.options.parentMessageId,
-        role: 'user',
-        text: chatInfo.prompt,
+    const parentMessageId = isPrompt
+      ? chatInfo.options.parentMessageId
+      : `prompt_${id}` // parent message is the prompt
+
+    if (chatInfo.status !== Status.Normal) { // jumps over deleted messages
+      return parentMessageId
+        ? getMessageById(parentMessageId)
+        : undefined
+    } else {
+      if (isPrompt) { // prompt
+        return {
+          id,
+          conversationId: chatInfo.options.conversationId,
+          parentMessageId: parentMessageId,
+          role: 'user',
+          text: chatInfo.prompt,
+        }
       }
-    }
-    else {
-      return { // completion
-        id,
-        conversationId: chatInfo.options.conversationId,
-        parentMessageId: `prompt_${id}`, // parent message is the prompt
-        role: 'assistant',
-        text: chatInfo.response,
+      else {
+        return { // completion
+          id,
+          conversationId: chatInfo.options.conversationId,
+          parentMessageId: parentMessageId,
+          role: 'assistant',
+          text: chatInfo.response,
+        }
       }
     }
   }
